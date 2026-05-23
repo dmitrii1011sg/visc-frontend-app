@@ -27,6 +27,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets/wasm",
+                "output": "/assets/wasm/"
               }
             ],
             "styles": ["src/styles.scss"]
