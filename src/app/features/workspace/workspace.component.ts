@@ -47,6 +47,9 @@ interface CryptoResult {
 export class ViscWorkspace implements OnInit, OnDestroy {
   @ViewChild('viewport', { static: true }) viewport!: ElementRef<HTMLDivElement>;
 
+  private lastTouchDistance = 0;
+  private initialPinchScale = 1;
+
   protected kValue = signal<number>(2);
   protected nValue = signal<number>(2);
   protected isColoredMode = signal<boolean>(false);
@@ -346,17 +349,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     return { pixelIndices, palette: idxToColor };
   }
 
-  onMouseDown(event: MouseEvent | TouchEvent) {
-    this.isDragging.set(true);
-    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-
-    this.dragStart = {
-      x: clientX - this.transform().x,
-      y: clientY - this.transform().y,
-    };
-  }
-
   @HostListener('document:mousemove', ['$event'])
   @HostListener('document:touchmove', ['$event'])
   onMouseMove(event: MouseEvent | TouchEvent) {
@@ -402,27 +394,79 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     });
   }
 
+  onMouseDown(event: MouseEvent | TouchEvent) {
+    if ('touches' in event && event.touches.length === 2) {
+      this.lastTouchDistance = this.getDistance(event.touches[0], event.touches[1]);
+      this.initialPinchScale = this.transform().scale;
+      return;
+    }
+
+    this.isDragging.set(true);
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+    this.dragStart = { x: clientX - this.transform().x, y: clientY - this.transform().y };
+  }
+
+  @HostListener('document:touchmove', ['$event'])
+  onMove(event: TouchEvent) {
+    if (event.touches.length === 2) {
+      event.preventDefault();
+      const dist = this.getDistance(event.touches[0], event.touches[1]);
+      const scaleFactor = dist / this.lastTouchDistance;
+      const newScale = Math.max(0.1, Math.min(this.initialPinchScale * scaleFactor, 10));
+
+      const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+      const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+
+      this.transform.update((t) => {
+        const ratio = newScale / t.scale;
+        return {
+          scale: newScale,
+          x: midX - (midX - t.x) * ratio,
+          y: midY - (midY - t.y) * ratio,
+        };
+      });
+      return;
+    }
+
+    if (this.isDragging() && event.touches.length === 1) {
+      const { clientX, clientY } = event.touches[0];
+      this.transform.update((t) => ({
+        ...t,
+        x: clientX - this.dragStart.x,
+        y: clientY - this.dragStart.y,
+      }));
+    }
+  }
+
+  @HostListener('document:touchend', ['$event'])
+  onTouchEnd(event: TouchEvent) {
+    this.isDragging.set(false);
+    this.lastTouchDistance = 0;
+  }
+
+  private getDistance(t1: Touch, t2: Touch): number {
+    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+  }
+
   resetZoom() {
     const result = this.cryptoResult();
     const vp = this.viewport.nativeElement;
-
     if (!result || !vp) return;
 
-    const padding = 60;
+    const isMobile = window.innerWidth < 768;
+    const padding = isMobile ? 20 : 60;
+
     const availableWidth = vp.clientWidth - padding;
     const availableHeight = vp.clientHeight - padding;
 
     const scaleX = availableWidth / result.width;
     const scaleY = availableHeight / result.height;
-
     const newScale = Math.min(scaleX, scaleY, 1);
 
-    const newX = (vp.clientWidth - result.width * newScale) / 2;
-    const newY = (vp.clientHeight - result.height * newScale) / 2;
-
     this.transform.set({
-      x: newX,
-      y: newY,
+      x: (vp.clientWidth - result.width * newScale) / 2,
+      y: (vp.clientHeight - result.height * newScale) / 2,
       scale: newScale,
     });
   }

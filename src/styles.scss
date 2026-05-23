@@ -1,1 +1,11 @@
 @import 'tailwindcss';
+
+#viewport {
+  touch-action: none;
+}
+
+body {
+  overscroll-behavior: none;
+  touch-action: none;
+  overflow: hidden;
+}
