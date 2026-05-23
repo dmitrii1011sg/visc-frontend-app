@@ -62,6 +62,16 @@ export class ViscSettingsSharePanel implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   ngOnInit() {
+    this.formGroup
+      .get(SettingsShareFormFields.n)
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((n) => {
+        const kControl = this.formGroup.get(SettingsShareFormFields.k)!;
+        if (kControl.value > n) {
+          kControl.setValue(n, { emitEvent: false });
+        }
+      });
+
     this.formGroup.valueChanges.pipe(debounceTime(100), takeUntil(this.destroy$)).subscribe(() => {
       if (this.formGroup.valid) {
         this.settingsChanged.emit(this.formGroup.getRawValue());

@@ -1,57 +1,41 @@
 <div [formGroup]="formGroup" class="space-y-4">
   <div class="grid grid-cols-2 gap-3">
     <div class="flex flex-col gap-1.5">
-      <label
-        [for]="formFields.n"
-        class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1"
+      <label class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1"
+        >Долей (N)</label
       >
-        Долей (N)
-      </label>
-      <div class="relative group">
-        <input
-          [formControlName]="formFields.n"
-          type="number"
-          [id]="formFields.n"
-          class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 block p-2.5 transition-all outline-none"
-        />
-        <div
-          class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-300 group-focus-within:text-blue-500"
-        >
-          <span class="text-[10px] font-mono">max:10</span>
-        </div>
-      </div>
+      <input
+        [formControlName]="formFields.n"
+        type="number"
+        min="2"
+        max="10"
+        class="w-full bg-gray-50 border border-gray-200 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 block p-2.5 outline-none transition-all"
+        [class.border-red-500]="formGroup.get(formFields.n)?.hasError('max')"
+      />
+      @if (formGroup.get(formFields.n)?.hasError('max')) {
+        <span class="text-[10px] text-red-500">Максимум 10 долей</span>
+      }
     </div>
 
     <div class="flex flex-col gap-1.5">
-      <label
-        [for]="formFields.k"
-        class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1"
+      <label class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1"
+        >Порог (K)</label
       >
-        Порог (K)
-      </label>
       <input
         [formControlName]="formFields.k"
         type="number"
-        [id]="formFields.k"
-        class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 block p-2.5 transition-all outline-none"
+        [max]="formGroup.get(formFields.n)?.value || 10"
+        min="2"
+        class="w-full bg-gray-50 border border-gray-200 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/20 block p-2.5 outline-none transition-all"
         [class.border-red-300]="formGroup.hasError('kGreaterThanN')"
       />
     </div>
   </div>
 
   @if (formGroup.hasError('kGreaterThanN')) {
-    <div class="flex items-center gap-2 px-2 text-red-500">
-      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fill-rule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-          clip-rule="evenodd"
-        ></path>
-      </svg>
-      <span class="text-[11px] font-medium leading-none tracking-tight"
-        >K не может быть больше N</span
-      >
-    </div>
+    <p class="text-[10px] text-red-500 mt-1 animate-in fade-in">
+      Порог K не может превышать количество долей N ({{ formGroup.get(formFields.n)?.value }})
+    </p>
   }
 
   <label class="relative inline-flex items-center cursor-pointer group select-none">

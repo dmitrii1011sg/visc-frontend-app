@@ -1,5 +1,7 @@
 <div class="flex flex-col gap-2">
-  <h3 class="hidden md:block font-bold text-sm text-gray-500 uppercase tracking-wider mb-2">
+  <h3
+    class="hidden md:block font-bold text-sm text-gray-500 uppercase tracking-wider mb-2 select-none"
+  >
     Сгенерированные доли
   </h3>
 
@@ -35,7 +37,7 @@
         <input
           type="checkbox"
           [checked]="isShareSelected($index)"
-          class="w-5 h-5 text-blue-600 rounded-full border-gray-300 focus:ring-blue-500 pointer-events-none"
+          class="w-5 h-5 text-blue-600 rounded-full border-gray-300 focus:ring-blue-500 pointer-events-none mr-2"
         />
       </div>
     }

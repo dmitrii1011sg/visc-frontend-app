@@ -22,7 +22,9 @@ import {
   faLock,
   faImage,
   faExpand,
+  faSave,
 } from '@fortawesome/free-solid-svg-icons';
+import JSZip from 'jszip';
 
 interface CryptoResult {
   width: number;
@@ -74,6 +76,7 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     locked: faLock,
     image: faImage,
     expand: faExpand,
+    download: faSave,
   };
 
   transform = signal({ x: 0, y: 0, scale: 1 });
@@ -347,6 +350,61 @@ export class ViscWorkspace implements OnInit, OnDestroy {
       pixelIndices[i / 4] = colorToIdx.get(key)!;
     }
     return { pixelIndices, palette: idxToColor };
+  }
+
+  async downloadAllShares() {
+    const result = this.cryptoResult();
+    if (!result) return;
+
+    const zip = new JSZip();
+    const canvas = document.createElement('canvas');
+    canvas.width = result.width;
+    canvas.height = result.height;
+    const ctx = canvas.getContext('2d')!;
+
+    for (let i = 0; i < result.shares.length; i++) {
+      const sharePixels = result.shares[i];
+      const imgData = ctx.createImageData(result.width, result.height);
+
+      // Заполняем данные для конкретной доли (логика из renderIndividualShares)
+      if (result.isColored) {
+        const palette = result.palette || [];
+        const numColors = palette.length;
+        for (let p = 0; p < sharePixels.length; p++) {
+          const colorIdx = sharePixels[p];
+          const idx = p * 4;
+          if (colorIdx === numColors) {
+            imgData.data[idx] = imgData.data[idx + 1] = imgData.data[idx + 2] = 0;
+          } else {
+            const color = palette[colorIdx];
+            imgData.data[idx] = color[0];
+            imgData.data[idx + 1] = color[1];
+            imgData.data[idx + 2] = color[2];
+          }
+          imgData.data[idx + 3] = 255;
+        }
+      } else {
+        for (let p = 0; p < sharePixels.length; p++) {
+          const val = sharePixels[p];
+          imgData.data.set([val, val, val, 255], p * 4);
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+
+      // Конвертируем в Blob и добавляем в ZIP
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (blob) zip.file(`share_${i + 1}.png`, blob);
+    }
+
+    // Генерируем и скачиваем архив
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shares.zip';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   @HostListener('document:mousemove', ['$event'])
