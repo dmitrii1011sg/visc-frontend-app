@@ -366,7 +366,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
       const sharePixels = result.shares[i];
       const imgData = ctx.createImageData(result.width, result.height);
 
-      // Заполняем данные для конкретной доли (логика из renderIndividualShares)
       if (result.isColored) {
         const palette = result.palette || [];
         const numColors = palette.length;
@@ -392,12 +391,10 @@ export class ViscWorkspace implements OnInit, OnDestroy {
 
       ctx.putImageData(imgData, 0, 0);
 
-      // Конвертируем в Blob и добавляем в ZIP
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (blob) zip.file(`share_${i + 1}.png`, blob);
     }
 
-    // Генерируем и скачиваем архив
     const content = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(content);
     const a = document.createElement('a');
@@ -469,21 +466,23 @@ export class ViscWorkspace implements OnInit, OnDestroy {
   onMove(event: TouchEvent) {
     if (event.touches.length === 2) {
       event.preventDefault();
-      const dist = this.getDistance(event.touches[0], event.touches[1]);
-      const scaleFactor = dist / this.lastTouchDistance;
-      const newScale = Math.max(0.1, Math.min(this.initialPinchScale * scaleFactor, 10));
 
+      const dist = this.getDistance(event.touches[0], event.touches[1]);
       const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
       const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
 
+      const scaleFactor = dist / this.lastTouchDistance;
+      const newScale = Math.max(0.1, Math.min(this.initialPinchScale * scaleFactor, 10));
+
       this.transform.update((t) => {
         const ratio = newScale / t.scale;
-        return {
-          scale: newScale,
-          x: midX - (midX - t.x) * ratio,
-          y: midY - (midY - t.y) * ratio,
-        };
+
+        const newX = midX - (midX - t.x) * ratio;
+        const newY = midY - (midY - t.y) * ratio;
+
+        return { scale: newScale, x: newX, y: newY };
       });
+
       return;
     }
 
