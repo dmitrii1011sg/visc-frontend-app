@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build WASM
+        run: |
+          chmod +x ./build-wasm.sh
+          ./build-wasm.sh
+
+      - name: Build Angular
+        run: pnpm build --base-href /${{ github.event.repository.name }}/
+
+      - name: Fix for SPA (404 page)
+        run: |
+          DIST_PATH=$(find dist -name index.html -print -quit | xargs dirname)
+          cp $DIST_PATH/index.html $DIST_PATH/404.html
+          echo "Build located at: $DIST_PATH"
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist/visc-frontend-app/browser
+          branch: gh-pages
