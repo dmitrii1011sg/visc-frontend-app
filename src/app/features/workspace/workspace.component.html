@@ -138,6 +138,15 @@
           transform().scale +
           ')'
         "
+        [style.filter]="
+          transform().scale < 0.5
+            ? 'blur(' +
+              0.2 / transform().scale +
+              'px) brightness(' +
+              (1.1 + 0.1 * (1 - transform().scale)) +
+              ')'
+            : 'none'
+        "
         style="transform-origin: 0 0"
       >
         <div
@@ -148,7 +157,7 @@
               id="overlay-canvas"
               [width]="result.width"
               [height]="result.height"
-              style="image-rendering: pixelated; display: block"
+              style="image-rendering: auto; display: block"
             ></canvas>
           } @else {
             <div

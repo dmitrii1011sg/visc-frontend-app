@@ -25,6 +25,7 @@ import {
   faSave,
 } from '@fortawesome/free-solid-svg-icons';
 import JSZip from 'jszip';
+import * as iq from 'image-q';
 
 interface CryptoResult {
   width: number;
@@ -127,7 +128,7 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     this.uploadedImageUrl.set(url);
   }
 
-  onGenerateShares(): void {
+  async onGenerateShares(): Promise<void> {
     const imgData = this.uploadedImageData();
     if (!imgData) {
       this.errorMessage.set('Пожалуйста, сначала загрузите изображение!');
@@ -146,16 +147,7 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     const isColored = this.isColoredMode();
 
     if (isColored) {
-      const quantizedData = new Uint8ClampedArray(imgData.data.length);
-      for (let i = 0; i < imgData.data.length; i += 4) {
-        quantizedData[i] = imgData.data[i] > 127 ? 255 : 0;
-        quantizedData[i + 1] = imgData.data[i + 1] > 127 ? 255 : 0;
-        quantizedData[i + 2] = imgData.data[i + 2] > 127 ? 255 : 0;
-        quantizedData[i + 3] = 255;
-      }
-
-      const { pixelIndices, palette } = this.getIndexedPalette(quantizedData);
-
+      const { pixelIndices, palette } = await this.quantize(imgData, 8);
       this.worker.postMessage(
         {
           type: 'ENCODE_IMAGE',
@@ -199,6 +191,71 @@ export class ViscWorkspace implements OnInit, OnDestroy {
         [grayscaleData.buffer],
       );
     }
+  }
+
+  private async quantize(imgData: ImageData, colorCount: number) {
+    const { width, height, data } = imgData;
+
+    const pointContainer = iq.utils.PointContainer.fromUint8Array(data, width, height);
+    const distanceMetric = new iq.distance.Euclidean();
+
+    const paletteQuantizer = new iq.palette.WuQuant(distanceMetric, colorCount);
+
+    paletteQuantizer.sample(pointContainer);
+
+    const paletteIterator = paletteQuantizer.quantize();
+    let palette: any;
+
+    for (const result of paletteIterator) {
+      if (result && result.palette) {
+        palette = result.palette;
+      }
+    }
+
+    if (!palette) {
+      throw new Error('Palette is not exist');
+    }
+
+    const imageQuantizer = new iq.image.ErrorDiffusionArray(
+      distanceMetric,
+      iq.image.ErrorDiffusionArrayKernel.FloydSteinberg,
+    );
+
+    const quantizationIterator = imageQuantizer.quantize(pointContainer, palette);
+    for (const _ of quantizationIterator) {
+    }
+
+    const quantizedRgba = pointContainer.toUint8Array();
+
+    const palettePoints = palette.getPointContainer().getPointArray();
+    const finalPalette: [number, number, number][] = palettePoints.map(
+      (p: iq.utils.Point) => [p.r, p.g, p.b] as [number, number, number],
+    );
+
+    finalPalette.push([0, 0, 0]);
+
+    const pixelIndices = new Uint8Array(width * height);
+    for (let i = 0; i < width * height; i++) {
+      const r = quantizedRgba[i * 4];
+      const g = quantizedRgba[i * 4 + 1];
+      const b = quantizedRgba[i * 4 + 2];
+
+      let bestIdx = 0;
+      let minDist = Infinity;
+      for (let j = 0; j < finalPalette.length; j++) {
+        const d =
+          Math.pow(r - finalPalette[j][0], 2) +
+          Math.pow(g - finalPalette[j][1], 2) +
+          Math.pow(b - finalPalette[j][2], 2);
+        if (d < minDist) {
+          minDist = d;
+          bestIdx = j;
+        }
+      }
+      pixelIndices[i] = bestIdx;
+    }
+
+    return { pixelIndices, palette: finalPalette };
   }
 
   private handleCryptoSuccess(result: CryptoResult): void {
@@ -329,27 +386,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
         ctx.putImageData(imgData, 0, 0);
       });
     }, 0);
-  }
-
-  private getIndexedPalette(rgbaData: Uint8ClampedArray) {
-    const colorToIdx = new Map<string, number>();
-    const idxToColor: [number, number, number][] = [];
-    const pixelIndices = new Uint8Array(rgbaData.length / 4);
-
-    let colorCounter = 0;
-    for (let i = 0; i < rgbaData.length; i += 4) {
-      const r = rgbaData[i];
-      const g = rgbaData[i + 1];
-      const b = rgbaData[i + 2];
-      const key = `${r},${g},${b}`;
-      if (!colorToIdx.has(key)) {
-        colorToIdx.set(key, colorCounter);
-        idxToColor.push([r, g, b]);
-        colorCounter++;
-      }
-      pixelIndices[i / 4] = colorToIdx.get(key)!;
-    }
-    return { pixelIndices, palette: idxToColor };
   }
 
   async downloadAllShares() {

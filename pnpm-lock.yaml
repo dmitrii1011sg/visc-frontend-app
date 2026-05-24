@@ -35,6 +35,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.3.0
         version: 4.3.0
+      image-q:
+        specifier: ^4.0.0
+        version: 4.0.0
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -1439,6 +1442,9 @@ packages:
     resolution: {integrity: sha512-TezXjmf3lj+zQ651r6hPqvSScqBLvyPI9FxdXBqpEwBijNGQ2NXpaFW/7joGzveYkKQUil7iiDHLo6LV71Pc0A==}
     deprecated: This is a stub types definition. jszip provides its own type definitions, so you do not need this installed.
 
+  '@types/node@16.9.1':
+    resolution: {integrity: sha512-QpLcX9ZSsq3YYUUnD3nFDY8H7wctAhQj/TFKL8Ya8v5fMm3CFXxo8zStsLAl780ltoYoo1WvKUVGBQK+1ifr7g==}
+
   '@vitejs/plugin-basic-ssl@2.1.4':
     resolution: {integrity: sha512-HXciTXN/sDBYWgeAD4V4s0DN0g72x5mlxQhHxtYu3Tt8BLa6MzcJZUyDVFCdtjNs3bfENVHVzOsmooTVuNgAAw==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
@@ -1968,6 +1974,9 @@ packages:
   ignore-walk@8.0.0:
     resolution: {integrity: sha512-FCeMZT4NiRQGh+YkeKMtWrOmBgWjHjMJ26WQWrRQyoyzqevdaGSakUaJW5xQYmjLlUVk2qUnCjYVBax9EKKg8A==}
     engines: {node: ^20.17.0 || >=22.9.0}
+
+  image-q@4.0.0:
+    resolution: {integrity: sha512-PfJGVgIfKQJuq3s0tTDOKtztksibuUEbJQIYT3by6wctQo+Rdlh7ef4evJ5NCdxY4CfMbvFkocEwbl4BF8RlJw==}
 
   immediate@3.0.6:
     resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}
@@ -4140,6 +4149,8 @@ snapshots:
     dependencies:
       jszip: 3.10.1
 
+  '@types/node@16.9.1': {}
+
   '@vitejs/plugin-basic-ssl@2.1.4(vite@7.3.2(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.97.3))':
     dependencies:
       vite: 7.3.2(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.97.3)
@@ -4724,6 +4735,10 @@ snapshots:
   ignore-walk@8.0.0:
     dependencies:
       minimatch: 10.2.5
+
+  image-q@4.0.0:
+    dependencies:
+      '@types/node': 16.9.1
 
   immediate@3.0.6: {}
 
