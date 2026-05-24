@@ -14,13 +14,12 @@
 
         <button
           (click)="isMobileLayersOpen.set(true)"
-          class="md:hidden bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 active:scale-95 transition-all cursor-pointer"
+          class="md:hidden bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-blue-100 active:scale-95 transition-all cursor-pointer"
         >
           <fa-icon [icon]="icons.layers" class="mr-2"></fa-icon>
           Слои ({{ cryptoResult() ? cryptoResult()!.shares.length : 0 }})
         </button>
       </div>
-
       <visc-settings-share-panel
         (settingsChanged)="onSettingsChange($event)"
       ></visc-settings-share-panel>
