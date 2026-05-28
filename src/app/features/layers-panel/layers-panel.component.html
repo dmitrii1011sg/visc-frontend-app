@@ -1,9 +1,14 @@
 <div class="flex flex-col gap-2">
-  <h3
-    class="hidden md:block font-bold text-sm text-gray-500 uppercase tracking-wider mb-2 select-none"
-  >
-    Сгенерированные доли
-  </h3>
+  <div class="flex items-center justify-between mb-2 px-1">
+    <h3 class="font-bold text-sm text-gray-500 uppercase tracking-wider select-none">Доли</h3>
+    <button
+      (click)="toggleAll.emit(!areAllSelected())"
+      class="font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 cursor-pointer mr-3"
+      [ngClass]="areAllSelected() ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'"
+    >
+      <fa-icon [icon]="areAllSelected() ? icons.eye : icons.eyeSlash"></fa-icon>
+    </button>
+  </div>
 
   @if (!result) {
     <p class="text-sm text-gray-400">Сгенерируйте изображение, чтобы увидеть слои.</p>
@@ -11,34 +16,36 @@
     @for (share of result.shares; track $index) {
       <div
         (click)="toggle.emit($index)"
-        class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition select-none shadow-sm"
+        class="flex items-center gap-3 p-2.5 border rounded-xl transition select-none shadow-sm"
         [ngClass]="
           isShareSelected($index)
             ? 'bg-blue-50 border-blue-400'
-            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+            : 'bg-white border-gray-100 hover:border-gray-200'
         "
       >
         <div
-          class="w-12 h-12 bg-white rounded border border-gray-300 overflow-hidden shrink-0 flex items-center justify-center"
+          class="w-10 h-10 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center"
         >
           <canvas
             [id]="'share-canvas-' + $index"
             [width]="result.width"
             [height]="result.height"
-            style="max-width: 100%; max-height: 100%; image-rendering: pixelated"
+            style="image-rendering: pixelated"
           ></canvas>
         </div>
 
         <div class="flex-1">
-          <p class="text-sm font-semibold text-gray-700">Доля {{ $index + 1 }}</p>
-          <p class="text-[10px] text-gray-400 uppercase tracking-tight">Layer Share</p>
+          <p class="text-sm font-bold text-slate-700">Доля {{ $index + 1 }}</p>
         </div>
 
-        <input
-          type="checkbox"
-          [checked]="isShareSelected($index)"
-          class="w-5 h-5 text-blue-600 rounded-full border-gray-300 focus:ring-blue-500 pointer-events-none mr-2"
-        />
+        <button
+          class="w-8 h-8 flex items-center cursor-pointer justify-center transition-colors"
+          [ngClass]="
+            isShareSelected($index) ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
+          "
+        >
+          <fa-icon [icon]="isShareSelected($index) ? icons.eye : icons.eyeSlash"></fa-icon>
+        </button>
       </div>
     }
   }

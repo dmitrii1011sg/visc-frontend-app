@@ -285,6 +285,19 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     });
   }
 
+  toggleAllShares(toggle: boolean): void {
+    this.selectedShares.update(() => {
+      const result = this.cryptoResult();
+      if (!result) return new Set();
+
+      if (toggle) {
+        return new Set(result.shares.map((_, index) => index));
+      } else {
+        return new Set();
+      }
+    });
+  }
+
   private renderIndividualShares(result: CryptoResult): void {
     setTimeout(() => {
       result.shares.forEach((sharePixels, index) => {
@@ -425,7 +438,8 @@ export class ViscWorkspace implements OnInit, OnDestroy {
   }
 
   onMouseDown(event: MouseEvent | TouchEvent) {
-    this.handleDoubleTap(event);
+    // TODO: fix double tap
+    // this.handleDoubleTap(event);
     if ('touches' in event) {
       if (event.touches.length === 2) {
         this.lastTouchDistance = this.getDistance(event.touches[0], event.touches[1]);

@@ -2,7 +2,7 @@
   class="flex flex-col md:flex-row h-[100dvh] w-screen overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans"
 >
   <aside
-    class="flex flex-col md:w-80 w-full bg-white border-r border-slate-200 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0"
+    class="flex flex-col md:w-80 w-full bg-white border-r border-b border-slate-200 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0"
   >
     <div class="px-4 py-3 md:p-5 border-b border-slate-100 flex flex-col gap-3 md:gap-5">
       <div class="flex justify-between items-center md:block">
@@ -83,6 +83,7 @@
           [result]="cryptoResult()"
           [selectedShares]="selectedShares()"
           (toggle)="toggleShareSelection($event)"
+          (toggleAll)="toggleAllShares($event)"
         ></visc-layers-panel>
       </div>
     </div>
@@ -235,12 +236,12 @@
       <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
     </div>
     <div class="px-8 pb-10 overflow-y-auto w-full">
-      <h2 class="text-2xl font-black text-slate-900 mb-6 text-center">Слои</h2>
       <visc-layers-panel
         class="w-full block"
         [result]="cryptoResult()"
         [selectedShares]="selectedShares()"
         (toggle)="toggleShareSelection($event)"
+        (toggleAll)="toggleAllShares($event)"
       ></visc-layers-panel>
     </div>
   </div>
