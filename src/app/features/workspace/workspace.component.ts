@@ -23,9 +23,12 @@ import {
   faImage,
   faExpand,
   faSave,
+  faPlus,
+  faMinus,
 } from '@fortawesome/free-solid-svg-icons';
 import JSZip from 'jszip';
 import * as iq from 'image-q';
+import { ViscCanvas } from '../visc-canvas/visc-canvas.component';
 
 interface CryptoResult {
   width: number;
@@ -43,6 +46,7 @@ interface CryptoResult {
     ViscSettingsSharePanel,
     ViscImageUpload,
     ViscLayersPanel,
+    ViscCanvas,
   ],
   selector: 'visc-workspace',
   templateUrl: './workspace.component.html',
@@ -52,6 +56,8 @@ export class ViscWorkspace implements OnInit, OnDestroy {
 
   private lastTouchDistance = 0;
   private initialPinchScale = 1;
+  private lastTouchTime = 0;
+  private lastTapTime = 0;
 
   protected kValue = signal<number>(2);
   protected nValue = signal<number>(2);
@@ -78,17 +84,14 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     image: faImage,
     expand: faExpand,
     download: faSave,
+    plus: faPlus,
+    minus: faMinus,
   };
 
   transform = signal({ x: 0, y: 0, scale: 1 });
   isDragging = signal(false);
   private dragStart = { x: 0, y: 0 };
   isMobileLayersOpen = signal(false);
-
-  sceneTransform = computed(() => {
-    const t = this.transform();
-    return `translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
-  });
 
   ngOnInit() {
     try {
@@ -264,7 +267,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     this.selectedShares.set(new Set());
     this.resetZoom();
     this.renderIndividualShares(result);
-    this.updateOverlayCanvas();
   }
 
   isShareSelected(index: number): boolean {
@@ -281,69 +283,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
       }
       return next;
     });
-    this.updateOverlayCanvas();
-  }
-
-  private updateOverlayCanvas(): void {
-    const result = this.cryptoResult();
-    const selected = this.selectedShares();
-    const canvas = document.getElementById('overlay-canvas') as HTMLCanvasElement;
-
-    if (!result || !canvas) return;
-
-    const ctx = canvas.getContext('2d')!;
-    const imgData = ctx.createImageData(result.width, result.height);
-    const totalPixels = result.width * result.height;
-
-    if (selected.size === 0) {
-      imgData.data.fill(255);
-      ctx.putImageData(imgData, 0, 0);
-      return;
-    }
-
-    if (result.isColored) {
-      const palette = result.palette || [];
-      const numColors = palette.length;
-
-      for (let i = 0; i < totalPixels; i++) {
-        let finalColorIdx = -1;
-        for (const shareIdx of selected) {
-          const colorIdx = result.shares[shareIdx][i];
-          if (colorIdx === numColors) {
-            finalColorIdx = numColors;
-            break;
-          }
-          if (colorIdx < numColors) finalColorIdx = colorIdx;
-        }
-
-        const rIdx = i * 4;
-        if (finalColorIdx === numColors || finalColorIdx === -1) {
-          imgData.data[rIdx] = 0;
-          imgData.data[rIdx + 1] = 0;
-          imgData.data[rIdx + 2] = 0;
-        } else {
-          const color = palette[finalColorIdx];
-          imgData.data[rIdx] = color[0];
-          imgData.data[rIdx + 1] = color[1];
-          imgData.data[rIdx + 2] = color[2];
-        }
-        imgData.data[rIdx + 3] = 255;
-      }
-    } else {
-      for (let i = 0; i < totalPixels; i++) {
-        let minBrightness = 255;
-        for (const shareIdx of selected) {
-          const brightness = result.shares[shareIdx][i];
-          if (brightness < minBrightness) minBrightness = brightness;
-        }
-        const rIdx = i * 4;
-        imgData.data[rIdx] = minBrightness;
-        imgData.data[rIdx + 1] = minBrightness;
-        imgData.data[rIdx + 2] = minBrightness;
-        imgData.data[rIdx + 3] = 255;
-      }
-    }
-    ctx.putImageData(imgData, 0, 0);
   }
 
   private renderIndividualShares(result: CryptoResult): void {
@@ -486,16 +425,23 @@ export class ViscWorkspace implements OnInit, OnDestroy {
   }
 
   onMouseDown(event: MouseEvent | TouchEvent) {
-    if ('touches' in event && event.touches.length === 2) {
-      this.lastTouchDistance = this.getDistance(event.touches[0], event.touches[1]);
-      this.initialPinchScale = this.transform().scale;
-      return;
+    this.handleDoubleTap(event);
+    if ('touches' in event) {
+      if (event.touches.length === 2) {
+        this.lastTouchDistance = this.getDistance(event.touches[0], event.touches[1]);
+        return;
+      }
+      this.dragStart = {
+        x: event.touches[0].clientX - this.transform().x,
+        y: event.touches[0].clientY - this.transform().y,
+      };
+    } else {
+      this.dragStart = {
+        x: event.clientX - this.transform().x,
+        y: event.clientY - this.transform().y,
+      };
     }
-
     this.isDragging.set(true);
-    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
-    this.dragStart = { x: clientX - this.transform().x, y: clientY - this.transform().y };
   }
 
   @HostListener('document:touchmove', ['$event'])
@@ -540,6 +486,50 @@ export class ViscWorkspace implements OnInit, OnDestroy {
 
   private getDistance(t1: Touch, t2: Touch): number {
     return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+  }
+
+  changeZoom(delta: number) {
+    this.transform.update((t) => {
+      let newScale = t.scale + delta;
+      newScale = Math.max(0.1, Math.min(newScale, 10));
+
+      const vp = this.viewport.nativeElement;
+      const midX = vp.clientWidth / 2;
+      const midY = vp.clientHeight / 2;
+      const ratio = newScale / t.scale;
+
+      return {
+        scale: newScale,
+        x: midX - (midX - t.x) * ratio,
+        y: midY - (midY - t.y) * ratio,
+      };
+    });
+  }
+
+  handleDoubleTap(event: MouseEvent | TouchEvent) {
+    const now = Date.now();
+    if (now - this.lastTapTime < 300) {
+      const t = this.transform();
+      if (t.scale > 1) {
+        this.resetZoom();
+      } else {
+        const clientX =
+          'touches' in event ? event.touches[0].clientX : (event as MouseEvent).clientX;
+        const clientY =
+          'touches' in event ? event.touches[0].clientY : (event as MouseEvent).clientY;
+
+        const rect = this.viewport.nativeElement.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        this.transform.set({
+          x: x - (x - t.x) * (2 / t.scale),
+          y: y - (y - t.y) * (2 / t.scale),
+          scale: 2,
+        });
+      }
+    }
+    this.lastTapTime = now;
   }
 
   resetZoom() {

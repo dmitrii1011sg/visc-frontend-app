@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -8,6 +8,8 @@ import { CommonModule } from '@angular/common';
   templateUrl: './image-upload.component.html',
 })
 export class ViscImageUpload {
+  @Input() mode: 'common' | 'small' = 'common';
+
   @Output() imageSelected = new EventEmitter<ImageData>();
   @Output() previewGenerated = new EventEmitter<string>();
 

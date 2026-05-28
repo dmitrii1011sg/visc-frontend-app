@@ -1,49 +1,69 @@
-<div
-  class="hidden md:block relative border-2 border-dashed border-gray-300 rounded-xl p-6 transition-all hover:border-blue-400 hover:bg-gray-50 group cursor-pointer"
-  (dragover)="$event.preventDefault()"
-  (drop)="onDrop($event)"
->
-  <input
-    type="file"
-    accept="image/*"
-    (change)="onFileChange($event)"
-    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-  />
-  <div class="flex flex-col items-center justify-center gap-2 pointer-events-none">
-    <svg
-      class="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
+@if (mode === 'small') {
+  <div class="relative inline-block">
+    <button
+      (click)="fileInput.click()"
+      class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 text-slate-500 rounded-xl shadow-sm hover:bg-slate-50 active:scale-90 transition-all cursor-pointer"
+      title="Загрузить новое изображение"
     >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-      />
-    </svg>
-    <div class="text-center">
-      <p class="text-sm font-medium text-gray-700">Нажмите или перетащите</p>
-      <p class="text-xs text-gray-400">PNG, JPG...</p>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+        />
+      </svg>
+    </button>
+    <input #fileInput type="file" accept="image/*" (change)="onFileChange($event)" class="hidden" />
+  </div>
+} @else {
+  <div
+    class="hidden md:block relative border-2 border-dashed border-gray-300 rounded-xl p-6 transition-all hover:border-blue-400 hover:bg-gray-50 group cursor-pointer"
+    (dragover)="$event.preventDefault()"
+    (drop)="onDrop($event)"
+  >
+    <input
+      type="file"
+      accept="image/*"
+      (change)="onFileChange($event)"
+      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+    />
+    <div class="flex flex-col items-center justify-center gap-2 pointer-events-none">
+      <svg
+        class="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+        />
+      </svg>
+      <div class="text-center">
+        <p class="text-sm font-medium text-gray-700">Нажмите или перетащите</p>
+        <p class="text-xs text-gray-400">PNG, JPG...</p>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="block md:hidden">
-  <button
-    (click)="fileInput.click()"
-    class="w-full bg-gray-500 text-white py-3.5 rounded-xl font-bold hover:bg-gray-600 transition-all disabled:bg-slate-100 disabled:text-slate-400 shadow-xl shadow-gray-100 disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
-  >
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-      />
-    </svg>
-    Загрузить изображение
-  </button>
-  <input #fileInput type="file" accept="image/*" (change)="onFileChange($event)" class="hidden" />
-</div>
+  <div class="block md:hidden">
+    <button
+      (click)="fileInput.click()"
+      class="w-full bg-gray-500 text-white py-3.5 rounded-xl font-bold hover:bg-gray-600 transition-all disabled:bg-slate-100 disabled:text-slate-400 shadow-xl shadow-gray-100 disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+        />
+      </svg>
+      Загрузить изображение
+    </button>
+    <input #fileInput type="file" accept="image/*" (change)="onFileChange($event)" class="hidden" />
+  </div>
+}
