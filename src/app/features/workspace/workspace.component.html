@@ -130,9 +130,16 @@
     }
 
     <div
-      class="w-full h-full relative"
+      class="flex-1 relative overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none"
+      style="
+        touch-action: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      "
       (mousedown)="onMouseDown($event)"
-      (touchstart)="onMouseDown($event)"
+      (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd($event)"
       (wheel)="onWheel($event)"
       #viewport
     >
@@ -156,7 +163,6 @@
             class="shadow-[0_32px_64px_rgba(0,0,0,0.15)] bg-transparent"
           ></div>
         </div>
-
         <visc-canvas
           class="absolute inset-0 z-10"
           [result]="result"
@@ -164,19 +170,42 @@
           [transform]="transform()"
         >
         </visc-canvas>
+      } @else {
+        <div
+          class="flex flex-col items-center h-full justify-center text-slate-400 animate-in fade-in duration-700"
+        >
+          <div
+            class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner"
+          >
+            <fa-icon [icon]="icons.image" class="text-3xl text-slate-300"></fa-icon>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-600">Изображение не загружено</h3>
+          <p class="text-sm text-slate-400 max-w-[250px] text-center mt-1">
+            Загрузите файл, чтобы начать процесс шифрования
+          </p>
+
+          <div class="mt-6 md:hidden">
+            <visc-image-upload
+              mode="common"
+              (imageSelected)="handleImageSelected($event)"
+              (previewGenerated)="handlePreviewGenerated($event)"
+            >
+            </visc-image-upload>
+          </div>
+        </div>
       }
     </div>
 
-    <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-20">
-      <button
-        (click)="resetZoom()"
-        title="Вписать в экран"
-        class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all text-slate-500 hover:text-blue-600 cursor-pointer"
-      >
-        <fa-icon [icon]="icons.expand"></fa-icon>
-      </button>
+    @if (cryptoResult()) {
+      <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-20">
+        <button
+          (click)="resetZoom()"
+          title="Вписать в экран"
+          class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all text-slate-500 hover:text-blue-600 cursor-pointer"
+        >
+          <fa-icon [icon]="icons.expand"></fa-icon>
+        </button>
 
-      @if (cryptoResult()) {
         <button
           (click)="downloadAllShares()"
           title="Скачать все доли"
@@ -184,38 +213,38 @@
         >
           <fa-icon [icon]="icons.download"></fa-icon>
         </button>
-      }
-    </div>
-
-    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center shadow-lg">
-      <div
-        class="bg-white/90 backdrop-blur-md rounded-xl border border-slate-100 flex items-center overflow-hidden h-10"
-      >
-        <button
-          (click)="changeZoom(-0.2)"
-          class="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
-        >
-          <fa-icon [icon]="icons.minus"></fa-icon>
-        </button>
-
-        <div class="w-px h-4 bg-slate-200"></div>
-
-        <div class="px-3 min-w-[4rem] text-center select-none">
-          <span class="text-[11px] font-black text-slate-700 tracking-tight">
-            {{ (transform().scale * 100).toFixed(0) }}%
-          </span>
-        </div>
-
-        <div class="w-px h-4 bg-slate-200"></div>
-
-        <button
-          (click)="changeZoom(0.2)"
-          class="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
-        >
-          <fa-icon [icon]="icons.plus"></fa-icon>
-        </button>
       </div>
-    </div>
+
+      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center shadow-lg">
+        <div
+          class="bg-white/90 backdrop-blur-md rounded-xl border border-slate-100 flex items-center overflow-hidden h-10"
+        >
+          <button
+            (click)="changeZoom(-0.2)"
+            class="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+          >
+            <fa-icon [icon]="icons.minus"></fa-icon>
+          </button>
+
+          <div class="w-px h-4 bg-slate-200"></div>
+
+          <div class="px-3 min-w-[4rem] text-center select-none">
+            <span class="text-[11px] font-black text-slate-700 tracking-tight">
+              {{ (transform().scale * 100).toFixed(0) }}%
+            </span>
+          </div>
+
+          <div class="w-px h-4 bg-slate-200"></div>
+
+          <button
+            (click)="changeZoom(0.2)"
+            class="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+          >
+            <fa-icon [icon]="icons.plus"></fa-icon>
+          </button>
+        </div>
+      </div>
+    }
   </main>
 
   @if (isMobileLayersOpen()) {

@@ -25,6 +25,7 @@ import {
   faSave,
   faPlus,
   faMinus,
+  faSliders,
 } from '@fortawesome/free-solid-svg-icons';
 import JSZip from 'jszip';
 import * as iq from 'image-q';
@@ -55,9 +56,8 @@ export class ViscWorkspace implements OnInit, OnDestroy {
   @ViewChild('viewport', { static: true }) viewport!: ElementRef<HTMLDivElement>;
 
   private lastTouchDistance = 0;
-  private initialPinchScale = 1;
-  private lastTouchTime = 0;
   private lastTapTime = 0;
+  private startTransform = { x: 0, y: 0, scale: 1 };
 
   protected kValue = signal<number>(2);
   protected nValue = signal<number>(2);
@@ -86,6 +86,7 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     download: faSave,
     plus: faPlus,
     minus: faMinus,
+    split: faSliders,
   };
 
   transform = signal({ x: 0, y: 0, scale: 1 });
@@ -392,8 +393,118 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
+  onTouchStart(event: TouchEvent) {
+    const target = event.target as HTMLElement;
+    const isInteractive = target.closest('button, input, [role="button"], visc-image-upload');
+
+    if (isInteractive) {
+      return;
+    }
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    if (event.touches.length > 0) {
+      this.isDragging.set(true);
+      const t = this.transform();
+
+      this.startTransform = { ...t };
+
+      if (event.touches.length === 1) {
+        this.dragStart = {
+          x: event.touches[0].clientX,
+          y: event.touches[0].clientY,
+        };
+        this.handleDoubleTap(event);
+      } else if (event.touches.length === 2) {
+        this.lastTouchDistance = this.getDistance(event.touches[0], event.touches[1]);
+      }
+    }
+  }
+
+  onTouchMove(event: TouchEvent) {
+    if (!this.isDragging()) return;
+
+    if (event.cancelable) event.preventDefault();
+
+    const t = this.transform();
+
+    if (event.touches.length === 2) {
+      const distance = this.getDistance(event.touches[0], event.touches[1]);
+      const delta = distance / this.lastTouchDistance;
+      this.lastTouchDistance = distance;
+
+      const newScale = Math.min(Math.max(t.scale * delta, 0.1), 10);
+
+      const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+      const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+      const rect = this.viewport.nativeElement.getBoundingClientRect();
+
+      const focusX = midX - rect.left;
+      const focusY = midY - rect.top;
+
+      this.transform.update((prev) => ({
+        scale: newScale,
+        x: focusX - (focusX - prev.x) * (newScale / prev.scale),
+        y: focusY - (focusY - prev.y) * (newScale / prev.scale),
+      }));
+      return;
+    }
+
+    if (event.touches.length === 1) {
+      const dx = event.touches[0].clientX - this.dragStart.x;
+      const dy = event.touches[0].clientY - this.dragStart.y;
+
+      this.transform.set({
+        ...t,
+        x: this.startTransform.x + dx,
+        y: this.startTransform.y + dy,
+      });
+    }
+  }
+
+  private handleDoubleTap(event: TouchEvent | MouseEvent) {
+    const now = performance.now();
+    const diff = now - this.lastTapTime;
+    if (diff > 50 && diff < 300) {
+      const t = this.transform();
+      const rect = this.viewport.nativeElement.getBoundingClientRect();
+
+      const clientX = 'touches' in event ? event.touches[0].clientX : (event as MouseEvent).clientX;
+      const clientY = 'touches' in event ? event.touches[0].clientY : (event as MouseEvent).clientY;
+
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const result = this.cryptoResult();
+      const vp = this.viewport.nativeElement;
+      if (!result || !vp) return;
+
+      const isMobile = window.innerWidth < 768;
+      const padding = isMobile ? 20 : 60;
+      const scaleX = (vp.clientWidth - padding) / result.width;
+      const scaleY = (vp.clientHeight - padding) / result.height;
+      const baseScale = Math.min(scaleX, scaleY, 1);
+
+      if (t.scale > baseScale + 0.01) {
+        this.resetZoom();
+      } else {
+        const newScale = baseScale * 3;
+
+        this.transform.set({
+          scale: newScale,
+          x: x - (x - t.x) * (newScale / t.scale),
+          y: y - (y - t.y) * (newScale / t.scale),
+        });
+      }
+      this.lastTapTime = 0;
+      return;
+    }
+
+    this.lastTapTime = now;
+  }
+
   @HostListener('document:mousemove', ['$event'])
-  @HostListener('document:touchmove', ['$event'])
   onMouseMove(event: MouseEvent | TouchEvent) {
     if (!this.isDragging()) return;
     const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
@@ -438,8 +549,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
   }
 
   onMouseDown(event: MouseEvent | TouchEvent) {
-    // TODO: fix double tap
-    // this.handleDoubleTap(event);
     if ('touches' in event) {
       if (event.touches.length === 2) {
         this.lastTouchDistance = this.getDistance(event.touches[0], event.touches[1]);
@@ -458,41 +567,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     this.isDragging.set(true);
   }
 
-  @HostListener('document:touchmove', ['$event'])
-  onMove(event: TouchEvent) {
-    if (event.touches.length === 2) {
-      event.preventDefault();
-
-      const dist = this.getDistance(event.touches[0], event.touches[1]);
-      const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
-      const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
-
-      const scaleFactor = dist / this.lastTouchDistance;
-      const newScale = Math.max(0.1, Math.min(this.initialPinchScale * scaleFactor, 10));
-
-      this.transform.update((t) => {
-        const ratio = newScale / t.scale;
-
-        const newX = midX - (midX - t.x) * ratio;
-        const newY = midY - (midY - t.y) * ratio;
-
-        return { scale: newScale, x: newX, y: newY };
-      });
-
-      return;
-    }
-
-    if (this.isDragging() && event.touches.length === 1) {
-      const { clientX, clientY } = event.touches[0];
-      this.transform.update((t) => ({
-        ...t,
-        x: clientX - this.dragStart.x,
-        y: clientY - this.dragStart.y,
-      }));
-    }
-  }
-
-  @HostListener('document:touchend', ['$event'])
   onTouchEnd(event: TouchEvent) {
     this.isDragging.set(false);
     this.lastTouchDistance = 0;
@@ -518,32 +592,6 @@ export class ViscWorkspace implements OnInit, OnDestroy {
         y: midY - (midY - t.y) * ratio,
       };
     });
-  }
-
-  handleDoubleTap(event: MouseEvent | TouchEvent) {
-    const now = Date.now();
-    if (now - this.lastTapTime < 300) {
-      const t = this.transform();
-      if (t.scale > 1) {
-        this.resetZoom();
-      } else {
-        const clientX =
-          'touches' in event ? event.touches[0].clientX : (event as MouseEvent).clientX;
-        const clientY =
-          'touches' in event ? event.touches[0].clientY : (event as MouseEvent).clientY;
-
-        const rect = this.viewport.nativeElement.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-
-        this.transform.set({
-          x: x - (x - t.x) * (2 / t.scale),
-          y: y - (y - t.y) * (2 / t.scale),
-          scale: 2,
-        });
-      }
-    }
-    this.lastTapTime = now;
   }
 
   resetZoom() {
