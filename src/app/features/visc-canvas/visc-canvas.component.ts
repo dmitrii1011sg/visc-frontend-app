@@ -11,6 +11,8 @@ export class ViscCanvas implements OnInit, OnDestroy {
 
   result = input<any>(null);
   selectedShares = input<Set<number>>(new Set());
+  originalImage = input<HTMLImageElement | null>(null);
+  showOriginal = input<boolean>(false);
   transform = input({ x: 0, y: 0, scale: 1 });
 
   private gl!: WebGL2RenderingContext;
@@ -19,6 +21,7 @@ export class ViscCanvas implements OnInit, OnDestroy {
   private textures: WebGLTexture[] = [];
   private animationFrameId: number = 0;
   private whiteTexture!: WebGLTexture;
+  private originalTexture: WebGLTexture | null = null;
 
   private fboInfo!: twgl.FramebufferInfo;
 
@@ -50,8 +53,22 @@ export class ViscCanvas implements OnInit, OnDestroy {
     });
 
     effect(() => {
+      const img = this.originalImage();
+      if (img && this.gl) {
+        if (this.originalTexture) this.gl.deleteTexture(this.originalTexture);
+        this.originalTexture = twgl.createTexture(this.gl, {
+          src: img,
+          min: this.gl.LINEAR,
+          mag: this.gl.LINEAR,
+          wrap: this.gl.CLAMP_TO_EDGE,
+        });
+      }
+    });
+
+    effect(() => {
       this.transform();
       this.selectedShares();
+      this.showOriginal();
       this.requestRender();
     });
   }
@@ -78,6 +95,7 @@ export class ViscCanvas implements OnInit, OnDestroy {
   ngOnDestroy() {
     cancelAnimationFrame(this.animationFrameId);
     this.textures.forEach((t) => this.gl.deleteTexture(t));
+    if (this.originalTexture) this.gl.deleteTexture(this.originalTexture);
     if (this.fboInfo) {
       this.gl.deleteFramebuffer(this.fboInfo.framebuffer);
       this.gl.deleteTexture(this.fboInfo.attachments[0]);
@@ -152,40 +170,42 @@ export class ViscCanvas implements OnInit, OnDestroy {
     if (!this.gl || !this.result() || !this.fboInfo) return;
 
     twgl.resizeCanvasToDisplaySize(this.gl.canvas as HTMLCanvasElement);
-
     const res = this.result();
     const t = this.transform();
-    const selected = Array.from(this.selectedShares());
+    const isOriginal = this.showOriginal() && this.originalTexture;
 
     this.gl.useProgram(this.programInfo.program);
     twgl.setBuffersAndAttributes(this.gl, this.programInfo, this.bufferInfo);
 
-    twgl.bindFramebufferInfo(this.gl, this.fboInfo);
-    this.gl.viewport(0, 0, res.width, res.height);
+    if (!isOriginal) {
+      twgl.bindFramebufferInfo(this.gl, this.fboInfo);
+      this.gl.viewport(0, 0, res.width, res.height);
+      this.gl.clearColor(1, 1, 1, 1);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    this.gl.clearColor(1, 1, 1, 1);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      const fboProjection = twgl.m4.ortho(0, res.width, 0, res.height, -1, 1);
+      const fboMatrix = twgl.m4.scale(fboProjection, [res.width, res.height, 1]);
 
-    const fboProjection = twgl.m4.ortho(0, res.width, 0, res.height, -1, 1);
-    const fboMatrix = twgl.m4.scale(fboProjection, [res.width, res.height, 1]);
+      this.gl.enable(this.gl.BLEND);
+      this.gl.blendEquation(this.gl.FUNC_ADD);
+      this.gl.blendFunc(this.gl.DST_COLOR, this.gl.ZERO);
 
-    this.gl.enable(this.gl.BLEND);
-    this.gl.blendEquation(this.gl.FUNC_ADD);
-    this.gl.blendFunc(this.gl.DST_COLOR, this.gl.ZERO);
+      this.selectedShares().forEach((idx) => {
+        if (this.textures[idx]) {
+          twgl.setUniforms(this.programInfo, {
+            u_matrix: fboMatrix,
+            u_texture: this.textures[idx],
+          });
+          twgl.drawBufferInfo(this.gl, this.bufferInfo);
+        }
+      });
 
-    selected.forEach((idx) => {
-      if (this.textures[idx]) {
-        twgl.setUniforms(this.programInfo, { u_matrix: fboMatrix, u_texture: this.textures[idx] });
-        twgl.drawBufferInfo(this.gl, this.bufferInfo);
-      }
-    });
-
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.fboInfo.attachments[0]);
-    this.gl.generateMipmap(this.gl.TEXTURE_2D);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.fboInfo.attachments[0]);
+      this.gl.generateMipmap(this.gl.TEXTURE_2D);
+    }
 
     twgl.bindFramebufferInfo(this.gl, null);
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
-
     this.gl.clearColor(0, 0, 0, 0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
@@ -200,19 +220,33 @@ export class ViscCanvas implements OnInit, OnDestroy {
     bgMatrix = twgl.m4.scale(bgMatrix, [t.scale, t.scale, 1]);
     bgMatrix = twgl.m4.scale(bgMatrix, [res.width + PADDING * 2, res.height + PADDING * 2, 1]);
 
-    let imgMatrix = twgl.m4.translate(projection, [t.x, t.y, 0]);
-    imgMatrix = twgl.m4.scale(imgMatrix, [t.scale, t.scale, 1]);
-    imgMatrix = twgl.m4.scale(imgMatrix, [res.width, res.height, 1]);
-
     this.gl.disable(this.gl.BLEND);
-
     twgl.setUniforms(this.programInfo, { u_matrix: bgMatrix, u_texture: this.whiteTexture });
     twgl.drawBufferInfo(this.gl, this.bufferInfo);
 
-    twgl.setUniforms(this.programInfo, {
-      u_matrix: imgMatrix,
-      u_texture: this.fboInfo.attachments[0],
-    });
+    let imgMatrix = twgl.m4.translate(projection, [t.x, t.y, 0]);
+    imgMatrix = twgl.m4.scale(imgMatrix, [t.scale, t.scale, 1]);
+
+    if (isOriginal && this.originalImage()) {
+      const img = this.originalImage()!;
+
+      const offsetX = (res.width - img.width) / 2;
+      const offsetY = (res.height - img.height) / 2;
+
+      imgMatrix = twgl.m4.translate(imgMatrix, [offsetX, offsetY, 0]);
+      // imgMatrix = twgl.m4.scale(imgMatrix, [img.width, img.height, 1]);
+
+      twgl.setUniforms(this.programInfo, { u_matrix: imgMatrix, u_texture: this.originalTexture });
+      imgMatrix = twgl.m4.scale(imgMatrix, [img.width, img.height, 1]);
+      twgl.setUniforms(this.programInfo, { u_matrix: imgMatrix, u_texture: this.originalTexture });
+    } else {
+      imgMatrix = twgl.m4.scale(imgMatrix, [res.width, res.height, 1]);
+      twgl.setUniforms(this.programInfo, {
+        u_matrix: imgMatrix,
+        u_texture: this.fboInfo.attachments[0],
+      });
+    }
+
     twgl.drawBufferInfo(this.gl, this.bufferInfo);
   }
 }

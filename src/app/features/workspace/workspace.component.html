@@ -105,25 +105,34 @@
         <div
           class="bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-slate-200 flex items-center gap-3"
         >
-          <div class="flex items-center gap-1.5">
-            <fa-icon [icon]="icons.layers" class="text-slate-400 text-[10px]"></fa-icon>
-            <span class="text-xs font-bold text-slate-700 whitespace-nowrap">
-              {{ selectedSharesCount() }} / {{ nValue() }}
-            </span>
-          </div>
-
-          <div class="w-px h-3 bg-slate-200"></div>
-
-          @if (selectedSharesCount() >= kValue()) {
-            <div class="flex items-center gap-1.5 text-green-600">
-              <fa-icon [icon]="icons.unlocked" class="text-[10px] animate-pulse"></fa-icon>
-              <span class="text-[10px] font-black uppercase tracking-wider">Готово</span>
+          @if (showOriginal()) {
+            <div
+              class="flex items-center gap-1.5 text-blue-600 animate-in fade-in zoom-in-95 duration-200"
+            >
+              <fa-icon [icon]="icons.image" class="text-[10px]"></fa-icon>
+              <span class="text-[10px] font-black uppercase tracking-wider">Оригинал</span>
             </div>
           } @else {
-            <div class="flex items-center gap-1.5 text-slate-400">
-              <fa-icon [icon]="icons.locked" class="text-[10px]"></fa-icon>
-              <span class="text-[10px] font-black uppercase tracking-wider">Мало долей</span>
+            <div class="flex items-center gap-1.5">
+              <fa-icon [icon]="icons.layers" class="text-slate-400 text-[10px]"></fa-icon>
+              <span class="text-xs font-bold text-slate-700 whitespace-nowrap">
+                {{ selectedSharesCount() }} / {{ nValue() }}
+              </span>
             </div>
+
+            <div class="w-px h-3 bg-slate-200"></div>
+
+            @if (selectedSharesCount() >= kValue()) {
+              <div class="flex items-center gap-1.5 text-green-600">
+                <fa-icon [icon]="icons.unlocked" class="text-[10px] animate-pulse"></fa-icon>
+                <span class="text-[10px] font-black uppercase tracking-wider">Готово</span>
+              </div>
+            } @else {
+              <div class="flex items-center gap-1.5 text-slate-400">
+                <fa-icon [icon]="icons.locked" class="text-[10px]"></fa-icon>
+                <span class="text-[10px] font-black uppercase tracking-wider">Мало долей</span>
+              </div>
+            }
           }
         </div>
       </div>
@@ -168,6 +177,8 @@
           [result]="result"
           [selectedShares]="selectedShares()"
           [transform]="transform()"
+          [originalImage]="sourceImageElement()"
+          [showOriginal]="showOriginal()"
         >
         </visc-canvas>
       } @else {
@@ -204,6 +215,17 @@
           class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all text-slate-500 hover:text-blue-600 cursor-pointer"
         >
           <fa-icon [icon]="icons.expand"></fa-icon>
+        </button>
+
+        <button
+          (mousedown)="showOriginal.set(true)"
+          (mouseup)="showOriginal.set(false)"
+          (mouseleave)="showOriginal.set(false)"
+          (touchstart)="showOriginal.set(true)"
+          (touchend)="showOriginal.set(false)"
+          class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-lg border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all text-slate-500 hover:text-blue-600 cursor-pointer"
+        >
+          <fa-icon [icon]="showOriginal() ? icons.eye : icons.eyeSlash"></fa-icon>
         </button>
 
         <button

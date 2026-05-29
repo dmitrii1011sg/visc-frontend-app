@@ -26,6 +26,8 @@ import {
   faPlus,
   faMinus,
   faSliders,
+  faEyeSlash,
+  faEye,
 } from '@fortawesome/free-solid-svg-icons';
 import JSZip from 'jszip';
 import * as iq from 'image-q';
@@ -62,11 +64,12 @@ export class ViscWorkspace implements OnInit, OnDestroy {
   protected kValue = signal<number>(2);
   protected nValue = signal<number>(2);
   protected isColoredMode = signal<boolean>(false);
-
+  protected showOriginal = signal(false);
   protected isLoading = signal<boolean>(false);
   protected errorMessage = signal<string | null>(null);
   protected cryptoResult = signal<CryptoResult | null>(null);
   protected uploadedImageUrl = signal<string | null>(null);
+  protected sourceImageElement = signal<HTMLImageElement | null>(null);
   protected uploadedImageData = signal<ImageData | null>(null);
 
   protected selectedShares = signal<Set<number>>(new Set());
@@ -87,6 +90,8 @@ export class ViscWorkspace implements OnInit, OnDestroy {
     plus: faPlus,
     minus: faMinus,
     split: faSliders,
+    eye: faEye,
+    eyeSlash: faEyeSlash,
   };
 
   transform = signal({ x: 0, y: 0, scale: 1 });
@@ -130,6 +135,11 @@ export class ViscWorkspace implements OnInit, OnDestroy {
 
   handlePreviewGenerated(url: string) {
     this.uploadedImageUrl.set(url);
+    const img = new Image();
+    img.onload = () => {
+      this.sourceImageElement.set(img);
+    };
+    img.src = url;
   }
 
   async onGenerateShares(): Promise<void> {
